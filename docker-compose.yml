@@ -1,0 +1,82 @@
+services:
+  eureka-server:
+    build:
+      context: ./eureka-server
+    container_name: nextalk-eureka
+    ports:
+      - "8761:8761"
+    environment:
+      SERVER_PORT: 8761
+      EUREKA_INSTANCE_HOSTNAME: eureka-server
+      JAVA_TOOL_OPTIONS: "-Xms96m -Xmx192m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  auth-db:
+    image: postgres:16-alpine
+    container_name: nextalk-auth-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: nextalk_auth
+      POSTGRES_USER: nextalk
+      POSTGRES_PASSWORD: nextalk
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextalk -d nextalk_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: nextalk-auth
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/nextalk_auth
+      SPRING_DATASOURCE_USERNAME: nextalk
+      SPRING_DATASOURCE_PASSWORD: nextalk
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      APP_JWT_SECRET: nextalk-local-development-secret-key-change-me-please-123456
+      GOOGLE_CLIENT_ID: ""
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: nextalk-gateway
+    depends_on:
+      - eureka-server
+      - auth-service
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-Xms96m -Xmx192m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+volumes:
+  auth-db-data:
