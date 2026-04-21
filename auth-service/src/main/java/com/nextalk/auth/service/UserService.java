@@ -19,6 +19,14 @@ public class UserService {
 
     private final AppUserRepository userRepository;
     private final UserMapper userMapper;
+    public UserService(
+            AppUserRepository userRepository,
+            UserMapper userMapper
+    ) {
+        this.userRepository = userRepository;
+        this.userMapper = userMapper;
+    }
+
 
     @Transactional(readOnly = true)
     public UserResponse getProfile(String email) {

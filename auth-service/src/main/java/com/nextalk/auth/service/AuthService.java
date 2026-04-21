@@ -33,6 +33,22 @@ public class AuthService {
     private final UserMapper userMapper;
     private final GoogleTokenService googleTokenService;
 
+    public AuthService(
+            AppUserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            AuthenticationManager authenticationManager,
+            JwtService jwtService,
+            UserMapper userMapper,
+            GoogleTokenService googleTokenService
+    ) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
+        this.userMapper = userMapper;
+        this.googleTokenService = googleTokenService;
+    }
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         String email = request.email().toLowerCase();
@@ -40,14 +56,13 @@ public class AuthService {
             throw new ApiException(HttpStatus.CONFLICT, "Email is already registered");
         }
 
-        AppUser user = AppUser.builder()
-                .name(request.name().trim())
-                .email(email)
-                .password(passwordEncoder.encode(request.password()))
-                .provider(AuthProvider.LOCAL)
-                .status(UserStatus.ONLINE)
-                .enabled(true)
-                .build();
+        AppUser user = new AppUser();
+        user.setName(request.name().trim());
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setProvider(AuthProvider.LOCAL);
+        user.setStatus(UserStatus.ONLINE);
+        user.setEnabled(true);
 
         AppUser savedUser = userRepository.save(user);
         return createAuthResponse(savedUser);
@@ -75,15 +90,7 @@ public class AuthService {
         AppUser user = userRepository.findByGoogleSubject(googleSubject)
                 .or(() -> userRepository.findByEmail(email))
                 .map(existingUser -> updateGoogleProfile(existingUser, googleSubject, name, avatarUrl))
-                .orElseGet(() -> AppUser.builder()
-                        .name(name)
-                        .email(email)
-                        .googleSubject(googleSubject)
-                        .avatarUrl(avatarUrl)
-                        .provider(AuthProvider.GOOGLE)
-                        .status(UserStatus.ONLINE)
-                        .enabled(true)
-                        .build());
+                .orElseGet(() -> createGoogleUser(googleSubject, email, name, avatarUrl));
 
         AppUser savedUser = userRepository.save(user);
         return createAuthResponse(savedUser);
@@ -95,6 +102,18 @@ public class AuthService {
         user.setName(name);
         user.setAvatarUrl(avatarUrl);
         user.setStatus(UserStatus.ONLINE);
+        return user;
+    }
+
+    private AppUser createGoogleUser(String googleSubject, String email, String name, String avatarUrl) {
+        AppUser user = new AppUser();
+        user.setName(name);
+        user.setEmail(email);
+        user.setGoogleSubject(googleSubject);
+        user.setAvatarUrl(avatarUrl);
+        user.setProvider(AuthProvider.GOOGLE);
+        user.setStatus(UserStatus.ONLINE);
+        user.setEnabled(true);
         return user;
     }
 

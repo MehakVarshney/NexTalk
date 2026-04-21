@@ -19,6 +19,10 @@ import lombok.RequiredArgsConstructor;
 public class AuthUserDetailsService implements UserDetailsService {
 
     private final AppUserRepository userRepository;
+    public AuthUserDetailsService(AppUserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
 
     @Override
     public UserDetails loadUserByUsername(String email) {
