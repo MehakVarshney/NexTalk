@@ -3,6 +3,7 @@
 .env.local
 .env.*
 
+..gitignore
 # Compiled class file
 *.class
 
