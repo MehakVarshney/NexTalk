@@ -1,0 +1,319 @@
+services:
+  eureka-server:
+    build:
+      context: ./eureka-server
+    container_name: nextalk-eureka
+    ports:
+      - "8761:8761"
+    environment:
+      SERVER_PORT: 8761
+      EUREKA_INSTANCE_HOSTNAME: eureka-server
+      JAVA_TOOL_OPTIONS: "-Xms96m -Xmx192m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  auth-db:
+    image: postgres:16-alpine
+    container_name: nextalk-auth-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: nextalk_auth
+      POSTGRES_USER: nextalk
+      POSTGRES_PASSWORD: nextalk
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextalk -d nextalk_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  auth-service:
+    build:
+      context: ./auth-service
+    container_name: nextalk-auth
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/nextalk_auth
+      SPRING_DATASOURCE_USERNAME: nextalk
+      SPRING_DATASOURCE_PASSWORD: nextalk
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      APP_JWT_SECRET: nextalk-local-development-secret-key-change-me-please-123456
+      GOOGLE_CLIENT_ID: ""
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  chat-db:
+    image: postgres:16-alpine
+    container_name: nextalk-chat-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: nextalk_chat
+      POSTGRES_USER: nextalk
+      POSTGRES_PASSWORD: nextalk
+    volumes:
+      - chat-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextalk -d nextalk_chat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  chat-service:
+    build:
+      context: ./chat-service
+    container_name: nextalk-chat
+    depends_on:
+      chat-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    ports:
+      - "8082:8082"
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://chat-db:5432/nextalk_chat
+      SPRING_DATASOURCE_USERNAME: nextalk
+      SPRING_DATASOURCE_PASSWORD: nextalk
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      APP_JWT_SECRET: nextalk-local-development-secret-key-change-me-please-123456
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  media-db:
+    image: postgres:16-alpine
+    container_name: nextalk-media-db
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: nextalk_media
+      POSTGRES_USER: nextalk
+      POSTGRES_PASSWORD: nextalk
+    volumes:
+      - media-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextalk -d nextalk_media"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  media-service:
+    build:
+      context: ./media-service
+    container_name: nextalk-media
+    depends_on:
+      media-db:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:postgresql://media-db:5432/nextalk_media
+      SPRING_DATASOURCE_USERNAME: nextalk
+      SPRING_DATASOURCE_PASSWORD: nextalk
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      APP_JWT_SECRET: nextalk-local-development-secret-key-change-me-please-123456
+      MEDIA_STORAGE_PATH: /app/data/media
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    volumes:
+      - media-files:/app/data/media
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  realtime-service:
+    build:
+      context: ./realtime-service
+    container_name: nextalk-realtime
+    depends_on:
+      eureka-server:
+        condition: service_started
+    ports:
+      - "8084:8084"
+    environment:
+      SERVER_PORT: 8084
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      APP_JWT_SECRET: nextalk-local-development-secret-key-change-me-please-123456
+      JAVA_TOOL_OPTIONS: "-Xms96m -Xmx192m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  notification-db:
+    image: postgres:16-alpine
+    container_name: nextalk-notification-db
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: nextalk_notification
+      POSTGRES_USER: nextalk
+      POSTGRES_PASSWORD: nextalk
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextalk -d nextalk_notification"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: nextalk-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: nextalk
+      RABBITMQ_DEFAULT_PASS: nextalk
+      RABBITMQ_ERLANG_COOKIE: "nextalk-secret-cookie"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 5672 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+
+
+  notification-service:
+    build:
+      context: ./notification-service
+    container_name: nextalk-notification
+    depends_on:
+      notification-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    ports:
+      - "8085:8085"
+    environment:
+      SERVER_PORT: 8085
+      SPRING_DATASOURCE_URL: jdbc:postgresql://notification-db:5432/nextalk_notification
+      SPRING_DATASOURCE_USERNAME: nextalk
+      SPRING_DATASOURCE_PASSWORD: nextalk
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: nextalk
+      SPRING_RABBITMQ_PASSWORD: nextalk
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      APP_JWT_SECRET: nextalk-local-development-secret-key-change-me-please-123456
+      JAVA_TOOL_OPTIONS: "-Xms128m -Xmx256m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: nextalk-gateway
+    depends_on:
+      - eureka-server
+      - auth-service
+      - chat-service
+      - media-service
+      - realtime-service
+      - notification-service
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      JAVA_TOOL_OPTIONS: "-Xms96m -Xmx192m -XX:+UseSerialGC -Djava.security.egd=file:/dev/./urandom"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  sonarqube:
+    image: sonarqube:10-community
+    container_name: nextalk-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://auth-db:5432/nextalk_auth
+      SONAR_JDBC_USERNAME: nextalk
+      SONAR_JDBC_PASSWORD: nextalk
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-logs:/opt/sonarqube/logs
+      - sonarqube-extensions:/opt/sonarqube/extensions
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  adminer:
+    image: adminer:latest
+    container_name: nextalk-adminer
+    ports:
+      - "8888:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: auth-db
+    depends_on:
+      - auth-db
+      - chat-db
+      - media-db
+      - notification-db
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+volumes:
+  auth-db-data:
+  chat-db-data:
+  media-db-data:
+  media-files:
+  notification-db-data:
+  rabbitmq-data:
+  sonarqube-data:
+  sonarqube-logs:
+  sonarqube-extensions:
+
