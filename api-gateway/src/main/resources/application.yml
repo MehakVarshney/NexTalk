@@ -1,0 +1,103 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**,/api/users/**
+        - id: chat-service
+          uri: lb://chat-service
+          predicates:
+            - Path=/api/chat/**
+        - id: media-service
+          uri: lb://media-service
+          predicates:
+            - Path=/api/media/**
+        - id: realtime-service-api
+          uri: lb://realtime-service
+          predicates:
+            - Path=/api/realtime/**
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+        - id: realtime-service-websocket
+          uri: lb:ws://realtime-service
+          predicates:
+            - Path=/ws/**
+        - id: auth-service-docs
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth-docs/**
+          filters:
+            - RewritePath=/auth-docs/(?<path>.*), /$\{path}
+        - id: chat-service-docs
+          uri: lb://chat-service
+          predicates:
+            - Path=/chat-docs/**
+          filters:
+            - RewritePath=/chat-docs/(?<path>.*), /$\{path}
+        - id: media-service-docs
+          uri: lb://media-service
+          predicates:
+            - Path=/media-docs/**
+          filters:
+            - RewritePath=/media-docs/(?<path>.*), /$\{path}
+        - id: realtime-service-docs
+          uri: lb://realtime-service
+          predicates:
+            - Path=/realtime-docs/**
+          filters:
+            - RewritePath=/realtime-docs/(?<path>.*), /$\{path}
+        - id: notification-service-docs
+          uri: lb://notification-service
+          predicates:
+            - Path=/notification-docs/**
+          filters:
+            - RewritePath=/notification-docs/(?<path>.*), /$\{path}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: auth-service
+        url: /auth-docs/v3/api-docs
+      - name: chat-service
+        url: /chat-docs/v3/api-docs
+      - name: media-service
+        url: /media-docs/v3/api-docs
+      - name: realtime-service
+        url: /realtime-docs/v3/api-docs
+      - name: notification-service
+        url: /notification-docs/v3/api-docs
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    reactor.netty: INFO
